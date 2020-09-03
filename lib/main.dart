@@ -1,18 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import './widgets/new_transaction.dart';
-
 import './widgets/transaction_list.dart';
 import './models/transaction.dart';
 import './widgets/chart.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitUp,
-  ]);
+  // WidgetsFlutterBinding.ensureInitialized();
+  // SystemChrome.setPreferredOrientations([
+  //   DeviceOrientation.portraitUp,
+  //   DeviceOrientation.portraitUp,
+  // ]);
   runApp(MyApp());
 }
 
@@ -21,7 +23,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Expense Tracker',
       theme: ThemeData(
           primarySwatch: Colors.purple,
           accentColor: Colors.amber,
@@ -101,65 +103,96 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final isLandscape = mediaQuery.orientation == Orientation.landscape;
 
-    final appBar = AppBar(
-      title: Text('Expense Tracker'),
-      actions: [
-        IconButton(
-            icon: Icon(Icons.add), onPressed: () => _startAddNewTx(context))
-      ],
-    );
+    final PreferredSizeWidget _appBar = Platform.isIOS
+        ? CupertinoNavigationBar(
+            middle: Text('Expense Tracker',
+                style: Theme.of(context).textTheme.title),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                    child: Icon(CupertinoIcons.add),
+                    onTap: () => _startAddNewTx(context))
+              ],
+            ))
+        : AppBar(
+            title: Text(
+              'Expense Tracker',
+            ),
+            actions: [
+              IconButton(
+                  icon: Icon(Icons.add),
+                  onPressed: () => _startAddNewTx(context))
+            ],
+          );
 
     final Widget _txListWidget = Container(
         height: (mediaQuery.size.height -
-                appBar.preferredSize.height -
+                _appBar.preferredSize.height -
                 mediaQuery.padding.top) *
             0.7,
         child: TransactionList(_transactions, _deleteTransaction));
 
-    return Scaffold(
-      appBar: appBar,
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isLandscape)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Show Chart'),
-                  Switch(
-                      value: _showChart,
-                      onChanged: (value) {
-                        setState(() {
-                          _showChart = value;
-                        });
-                      })
-                ],
-              ),
-            if (!isLandscape)
-              Container(
-                  height: (mediaQuery.size.height -
-                          appBar.preferredSize.height -
-                          mediaQuery.padding.top) *
-                      0.3,
-                  child: Chart(_recentTransactions)),
-            if (!isLandscape) _txListWidget,
-            if (isLandscape)
-              _showChart
-                  ? Container(
-                      height: (mediaQuery.size.height -
-                              appBar.preferredSize.height -
-                              mediaQuery.padding.top) *
-                          0.7,
-                      child: Chart(_recentTransactions))
-                  : _txListWidget,
-          ],
-        ),
+    // wrap in safe area for the sake of ios as the top notificaton also takes
+    final Widget _pageBody = SafeArea(
+        child: SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isLandscape)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Show Chart'),
+                // make the switch adpative to OS by using the adaptive controller
+                Switch.adaptive(
+                    activeColor: Theme.of(context).accentColor,
+                    value: _showChart,
+                    onChanged: (value) {
+                      setState(() {
+                        _showChart = value;
+                      });
+                    })
+              ],
+            ),
+          if (!isLandscape)
+            Container(
+                height: (mediaQuery.size.height -
+                        _appBar.preferredSize.height -
+                        mediaQuery.padding.top) *
+                    0.3,
+                child: Chart(_recentTransactions)),
+          if (!isLandscape) _txListWidget,
+          if (isLandscape)
+            _showChart
+                ? Container(
+                    height: (mediaQuery.size.height -
+                            _appBar.preferredSize.height -
+                            mediaQuery.padding.top) *
+                        0.7,
+                    child: Chart(_recentTransactions))
+                : _txListWidget,
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton(
-          onPressed: () => _startAddNewTx(context), child: Icon(Icons.add)),
-    );
+    ));
+
+    return Platform.isIOS
+        ? CupertinoPageScaffold(
+            child: _pageBody,
+            navigationBar: _appBar,
+          )
+        : Scaffold(
+            appBar: _appBar,
+            body: _pageBody,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            //only render floating action button if on android
+            floatingActionButton: Platform.isIOS
+                ? Container()
+                : FloatingActionButton(
+                    onPressed: () => _startAddNewTx(context),
+                    child: Icon(Icons.add)),
+          );
   }
 }

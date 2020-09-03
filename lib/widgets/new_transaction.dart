@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+
+import './adaptive_flat_button.dart';
 
 // make it stateful eventhough it does not set state so that the input
 // fields do not clear once state changes eg if you click next text field
@@ -92,12 +97,7 @@ class _NewTransactionState extends State<NewTransaction> {
                               ? 'No Date Choosen'
                               : 'Selected Date: ${DateFormat.yMMMEd().format(_selectedDate)}'),
                         ),
-                        FlatButton(
-                          onPressed: _presentDatePicker,
-                          textColor: Theme.of(context).primaryColor,
-                          child: Text('Select Date',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                        )
+                        AdaptiveFlatButton('Select Date', _presentDatePicker)
                       ],
                     ),
                   ),
