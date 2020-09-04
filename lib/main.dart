@@ -52,7 +52,26 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+// don't mind the mixin, i am playing around with stuff
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
+  }
+
+  @override
+  void dispose() {
+    // to clean app the observer declared above. Prevents memory leaks
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   final List<Transaction> _transactions = [
     // Transaction(id: 't1', title: 'Carpet', amount: 6000, date: DateTime.now()),
     // Transaction(id: 't2', title: 'Chair', amount: 8000, date: DateTime.now()),
@@ -97,13 +116,50 @@ class _MyHomePageState extends State<MyHomePage> {
 
   var _showChart = false;
 
-  @override
-  Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
+  List<Widget> _buildLandscapeContent(
+      MediaQueryData mediaQuery, AppBar _appBar, Widget _txListWidget) {
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Show Chart'),
+          // make the switch adpative to OS by using the adaptive controller
+          Switch.adaptive(
+              activeColor: Theme.of(context).accentColor,
+              value: _showChart,
+              onChanged: (value) {
+                setState(() {
+                  _showChart = value;
+                });
+              })
+        ],
+      ),
+      _showChart
+          ? Container(
+              height: (mediaQuery.size.height -
+                      _appBar.preferredSize.height -
+                      mediaQuery.padding.top) *
+                  0.7,
+              child: Chart(_recentTransactions))
+          : _txListWidget,
+    ];
+  }
 
-    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+  List<Widget> _buildPortraitContent(
+      MediaQueryData mediaQuery, AppBar _appBar, Widget _txListWidget) {
+    return [
+      Container(
+          height: (mediaQuery.size.height -
+                  _appBar.preferredSize.height -
+                  mediaQuery.padding.top) *
+              0.3,
+          child: Chart(_recentTransactions)),
+      _txListWidget
+    ];
+  }
 
-    final PreferredSizeWidget _appBar = Platform.isIOS
+  AppBar _buildAppBar() {
+    return Platform.isIOS
         ? CupertinoNavigationBar(
             middle: Text('Expense Tracker',
                 style: Theme.of(context).textTheme.title),
@@ -125,6 +181,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   onPressed: () => _startAddNewTx(context))
             ],
           );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+
+    final PreferredSizeWidget _appBar = _buildAppBar();
 
     final Widget _txListWidget = Container(
         height: (mediaQuery.size.height -
@@ -141,38 +206,9 @@ class _MyHomePageState extends State<MyHomePage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isLandscape)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Show Chart'),
-                // make the switch adpative to OS by using the adaptive controller
-                Switch.adaptive(
-                    activeColor: Theme.of(context).accentColor,
-                    value: _showChart,
-                    onChanged: (value) {
-                      setState(() {
-                        _showChart = value;
-                      });
-                    })
-              ],
-            ),
+            ..._buildLandscapeContent(mediaQuery, _appBar, _txListWidget),
           if (!isLandscape)
-            Container(
-                height: (mediaQuery.size.height -
-                        _appBar.preferredSize.height -
-                        mediaQuery.padding.top) *
-                    0.3,
-                child: Chart(_recentTransactions)),
-          if (!isLandscape) _txListWidget,
-          if (isLandscape)
-            _showChart
-                ? Container(
-                    height: (mediaQuery.size.height -
-                            _appBar.preferredSize.height -
-                            mediaQuery.padding.top) *
-                        0.7,
-                    child: Chart(_recentTransactions))
-                : _txListWidget,
+            ..._buildPortraitContent(mediaQuery, _appBar, _txListWidget),
         ],
       ),
     ));
